@@ -1,0 +1,21 @@
+{
+  "skill_name": "crypto-extractor",
+  "evals": [
+    {
+      "id": 1,
+      "eval_name": "small-test-single-directory",
+      "prompt": "请从 D:\\hwcam-main\\entry\\src\\main\\ets\\security 目录中提取加密算法，这是一个小型测试，仅扫描该目录下的4个 .ets 文件，输出结果到 D:\\hwcam-main\\TestPlan\\EncryptionTest\\SmallTest 目录",
+      "expected_output": "生成加密提取结果文档，识别 AES-GCM、HUKS、SHA-256、PBKDF2 等加密算法",
+      "files": []
+    },
+    {
+      "id": 2,
+      "eval_name": "explicit-extraction-keywords",
+      "prompt": "提取加密函数，项目路径 D:\\hwcam-main，仅扫描 entry\\src\\main\\ets\\network 目录（10个文件），输出到 TestPlan\\EncryptionTest\\NetworkTest",
+      "expected_output": "识别 HTTP摘要认证 MD5/SHA-256、随机数生成等加密相关代码",
+      "files": []
+    }
+  ]
+}
+  ]
+}
