@@ -1,0 +1,17 @@
+{
+  "skill_name": "protocol-audit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我需要审计 D:\\hwcam-main\\entry\\src\\main\\ets\\network 目录下所有代码文件中使用的网络协议。请提取每个文件中使用的协议名称和版本号。注意：只需要检查 .ets 文件，排除 .md 文件。",
+      "expected_output": "Skill应触发，进入Phase 1询问确认(根目录/文件类型/排除项)，或直接输出测试计划。不应跳过确认直接执行。输出应包含：测试计划文档、逐文件清单、协议排除清单、subagent执行策略。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "我们团队接手了一个Python物联网项目，代码在 /home/dev/iot-gateway 下面。我想知道这个项目用到了哪些网络协议（比如MQTT、HTTP、CoAP之类的）。帮我做一次全项目的协议审计，Python的.py文件和配置文件都要查，但不要碰node_modules和__pycache__。",
+      "expected_output": "Skill应触发，适配Python生态系统。Phase 1应确认根目录和文件类型(.py, .yaml, .json, .toml, .cfg, .ini)。应输出覆盖Python项目的测试计划，包含Python网络库识别(requests, aiohttp, paho-mqtt, websockets等)。排除node_modules和__pycache__。",
+      "files": []
+    }
+  ]
+}
