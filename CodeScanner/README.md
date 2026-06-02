@@ -19,33 +19,45 @@ python main.py \
   --code-root <目标代码根路径> \
   --ai-tool <claudecode|opencode> \
   --prompt-template <Prompt 模板文件路径> \
-  [--split-granularity single-folder]
+  [--split-granularity single-folder] \
+  [--debug]
 ```
 
 | 参数 | 必填 | 说明 |
 |------|------|------|
 | `--code-root` | 是 | 代码工程根目录 |
-| `--ai-tool` | 是 | AI 工具选择，当前支持 `claudecode`（`opencode` 占位） |
+| `--ai-tool` | 是 | AI 工具选择：`claudecode` 或 `opencode`（均已支持） |
 | `--prompt-template` | 是 | Prompt 模板文件路径（UTF-8） |
 | `--split-granularity` | 否 | 代码分割细粒度，默认 `single-folder`（仅支持此值） |
+| `--debug` | 否 | 开启后将 AI 对话返回的原始信息记录到 `scanner.log` |
 
 ### Prompt 模板建议
 
-Prompt 中应明确约束 AI 仅扫描当前工作目录，避免访问子文件夹。示例：
+Prompt 中应明确：
+1. 约束 AI 仅扫描当前工作目录，避免访问子文件夹
+2. 要求 AI 将结果写入固定文件 `AI测试结果.md`（程序以此读取结果）
+
+示例 (`Prompts/HardcodedPasswordPrompt.md`)：
 
 ```
-请确认当前文件夹下的所有文件的安全问题，请注意：**不要去访问子文件夹，仅仅测试当前文件夹下的所有文件。**
+本次任务将扫描代码中所有的密码秘钥硬编码情景。
+1. 请仅仅测试当前目录下的所有文件，不包含子文件夹。
+2. 测试结束以后，将结果完整总结，滤掉测试过程信息，
+   在根目录生成 "AI测试结果.md"。后续会使用脚本读取，文件名必须一致。
 ```
+
+> 注意：Prompt 中可通过 `/skill-name` 引用已配置的 Claude Code skill，AI 会自动调用该 skill 的子代理机制。
 
 ## 执行流程
 
 1. 读取并解析 Prompt 模板
 2. 递归遍历代码根目录（深度优先），过滤业界标准非代码目录
 3. 遍历每个子目录，调用 AI CLI 以该目录为工作路径进行单次安全扫描
-4. 每个目录扫描完成后：
+4. AI 在子目录下生成 `AI测试结果.md`，程序读取该文件作为扫描结果
+5. 每个目录扫描完成后：
    - 单独结果落盘至 `output/mirrored/<相对路径>/<目录名>.md`
    - 追加结果至 `output/combined_results.md`
-5. 所有目录扫描完毕后退出；中途任何 AI 调用失败则立即终止
+6. 所有目录扫描完毕后退出；中途单个目录失败（超时/未生成结果文件）记录错误后继续扫描后续目录
 
 ## 目录过滤规则
 
@@ -76,10 +88,11 @@ output/
 ## 自测
 
 ```bash
-python main.py \
-  --code-root D:\CodeScanner\TestCases \
-  --ai-tool claudecode \
-  --prompt-template D:\CodeScanner\TestCases\TestPrompt.md
+# 使用 ClaudeCode
+python main.py --code-root D:\CodeScanner\TestCases --ai-tool claudecode --prompt-template D:\CodeScanner\Prompts\HardcodedPasswordPrompt.md
+
+# 使用 OpenCode
+python main.py --code-root D:\hwcam-main --ai-tool opencode --prompt-template D:\CodeScanner\Prompts\HardcodedPasswordPrompt.md --debug
 ```
 
 `TestCases/` 下预埋了包含安全漏洞的示例代码：
@@ -93,4 +106,5 @@ python main.py \
 - 需要预先安装所选 AI 工具的 CLI 并确保在 PATH 中可用
 - AI 调用为阻塞串行模式，大工程耗时较长，建议后台运行
 - 日志双通道：控制台输出扫描进度，`scanner.log` 记录完整调试信息（CLI 命令、退出码、耗时）
-- 遇到 AI 调用失败（非零退出码、超时、CLI 未找到）程序立即终止
+- AI 调用默认超时 1000s，超时或缺结果文件时记录错误并跳过当前目录，继续扫描后续目录
+- 扫描结束会汇总成功/失败数量；CLI 未找到仍会立即终止（无法继续）

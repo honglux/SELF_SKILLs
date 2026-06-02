@@ -15,6 +15,9 @@ from ai_client import AICallError, get_client
 
 logger = logging.getLogger("CodeScanner")
 
+# AI 生成的结果文件名（Prompt 模板中约定的固定名称）
+RESULT_FILE = "AI测试结果.md"
+
 # ── 目录过滤（行业标准） ──────────────────────────────────────────────
 
 IGNORE_DIRS = {
@@ -26,9 +29,9 @@ IGNORE_DIRS = {
     "__pycache__", ".pytest_cache", ".mypy_cache", ".tox", ".nox",
     ".ruff_cache", ".eggs",
     # 构建产物
-    "dist", "build", "target", "out", "bin", "obj", ".next", ".nuxt", ".output",
+    "dist", "build", "target", "out", "bin", "obj", ".next", ".nuxt", ".output", "doc", "skill", "TestPlan",
     # IDE 配置
-    ".idea", ".vscode", ".vs", ".fleet", ".settings",
+    ".idea", ".vscode", ".vs", ".fleet", ".settings", ".claude", ".gitcode",
     # 缓存
     ".cache", ".turbo", ".parcel-cache",
     # 覆盖率
@@ -63,6 +66,7 @@ def parse_args():
     parser.add_argument("--prompt-template", required=True, help="Prompt 模板文件路径")
     parser.add_argument("--split-granularity", default="single-folder",
                         choices=["single-folder"], help="代码分割细粒度（默认 single-folder）")
+    parser.add_argument("--debug", action="store_true", help="开启调试模式，将 AI 对话返回信息记录到日志")
     args = parser.parse_args()
 
     code_root = Path(args.code_root)
@@ -150,16 +154,30 @@ def main():
     combined_file.parent.mkdir(parents=True, exist_ok=True)
 
     total = len(dirs)
+    failed = 0
     for i, workdir in enumerate(dirs, start=1):
         rel_path = str(workdir.relative_to(code_root)) if workdir != code_root else "."
         logger.info("[%d/%d] 扫描中: %s", i, total, rel_path)
         t0 = time.time()
 
         try:
-            result = client.invoke(prompt, workdir)
+            stdout = client.invoke(prompt, workdir)
         except AICallError as e:
-            logger.error("AI 调用失败 [%s]: %s", rel_path, e)
-            sys.exit(1)
+            logger.error("[%d/%d] AI 调用失败，跳过: %s — %s", i, total, rel_path, e)
+            failed += 1
+            continue
+
+        if args.debug:
+            logger.debug("[%s] AI 对话返回:\n%s", rel_path, stdout)
+
+        # 读取 AI 生成的结果文件
+        result_file = workdir / RESULT_FILE
+        if not result_file.is_file():
+            logger.error("[%d/%d] AI 未生成结果文件，跳过: %s", i, total, result_file)
+            failed += 1
+            continue
+        result = result_file.read_text(encoding="utf-8")
+        logger.debug("读取结果文件: %s (%d 字符)", result_file, len(result))
 
         elapsed = time.time() - t0
         logger.info("[%d/%d] 完成 (耗时 %.0fs)", i, total, elapsed)
@@ -167,7 +185,8 @@ def main():
         save_single_result(result, workdir, code_root, output_base)
         append_combined_result(result, workdir, code_root, combined_file)
 
-    logger.info("全部扫描完成，共 %d 个目录，结果保存在 %s", total, output_base.resolve())
+    ok = total - failed
+    logger.info("全部扫描完成: 成功 %d, 失败 %d, 共 %d 个目录, 结果保存在 %s", ok, failed, total, output_base.resolve())
 
 
 if __name__ == "__main__":
