@@ -73,7 +73,7 @@ class AIClient(ABC):
 class ClaudeCodeClient(AIClient):
     """通过 ClaudeCode CLI (`claude -p`) 进行非交互单次调用。"""
 
-    def __init__(self, max_turns: int = 15, timeout: int = 1500):
+    def __init__(self, max_turns: int = 15, timeout: int = 1000):
         self.max_turns = max_turns
         self.timeout = timeout
 
@@ -120,7 +120,7 @@ class ClaudeCodeClient(AIClient):
 class OpenCodeClient(AIClient):
     """通过 OpenCode CLI (`opencode run`) 进行非交互单次调用。"""
 
-    def __init__(self, timeout: int = 1500):
+    def __init__(self, timeout: int = 1000):
         self.timeout = timeout
 
     def invoke(self, prompt: str, workdir: Path) -> str:

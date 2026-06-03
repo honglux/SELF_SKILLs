@@ -52,7 +52,7 @@ Prompt 中应明确：
 
 1. 读取并解析 Prompt 模板
 2. 递归遍历代码根目录（深度优先），过滤业界标准非代码目录
-3. 遍历每个子目录，调用 AI CLI 以该目录为工作路径进行单次安全扫描
+3. 遍历每个子目录，先清理该目录下残留的 `AI测试结果.md`（如有），再调用 AI CLI 进行单次安全扫描
 4. AI 在子目录下生成 `AI测试结果.md`，程序读取该文件作为扫描结果
 5. 每个目录扫描完成后：
    - 单独结果落盘至 `output/mirrored/<相对路径>/<目录名>.md`
@@ -92,7 +92,7 @@ output/
 python main.py --code-root D:\CodeScanner\TestCases --ai-tool claudecode --prompt-template D:\CodeScanner\Prompts\HardcodedPasswordPrompt.md
 
 # 使用 OpenCode
-python main.py --code-root D:\hwcam-main --ai-tool opencode --prompt-template D:\CodeScanner\Prompts\HardcodedPasswordPrompt.md --debug
+python main.py --code-root D:\CodeScanner\TestCases --ai-tool opencode --prompt-template D:\CodeScanner\Prompts\HardcodedPasswordPrompt.md --debug
 ```
 
 `TestCases/` 下预埋了包含安全漏洞的示例代码：

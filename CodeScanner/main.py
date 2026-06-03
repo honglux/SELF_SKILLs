@@ -160,6 +160,12 @@ def main():
         logger.info("[%d/%d] 扫描中: %s", i, total, rel_path)
         t0 = time.time()
 
+        # 清理上次残留的结果文件，避免读到旧结果
+        stale_result = workdir / RESULT_FILE
+        if stale_result.is_file():
+            stale_result.unlink()
+            logger.debug("已清理残留结果文件: %s", stale_result)
+
         try:
             stdout = client.invoke(prompt, workdir)
         except AICallError as e:
