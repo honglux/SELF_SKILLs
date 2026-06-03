@@ -1,6 +1,7 @@
-"""AI 客户端抽象层：支持 ClaudeCode 和 OpenCode 两种 CLI 工具。"""
+"""AI 客户端抽象层：支持 ClaudeCode、OpenCode、Codex 三种 CLI 工具。"""
 
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -54,6 +55,28 @@ def _parse_cmd_launcher(cmd_path: str) -> str | None:
 def _strip_ansi(text: str) -> str:
     """移除字符串中的 ANSI 转义序列。"""
     return _ANSI_RE.sub("", text)
+
+
+def _find_codex() -> list[str]:
+    """解析 codex CLI 为直接 node 调用，绕过 .cmd 包装器的引号截断问题。
+
+    codex.cmd 通过 `%*` 将参数转发给 node，但 cmd.exe 对多行文本和
+    嵌入双引号的处理会导致 prompt 被截断。直接调用 node + codex.js
+    可让 subprocess 通过 CreateProcess 传递参数，避免 shell 介入。
+    """
+    import os as _os
+    npm_dir = Path(_os.environ.get("APPDATA", "")) / "npm"
+    codex_js = npm_dir / "node_modules" / "@openai" / "codex" / "bin" / "codex.js"
+
+    node = shutil.which("node") or shutil.which("node.exe")
+    if node is None:
+        raise AICallError("未找到 node 命令，请确认 Node.js 已安装并在 PATH 中")
+
+    if not codex_js.is_file():
+        raise AICallError(f"未找到 codex.js: {codex_js}，请确认 codex CLI 已安装")
+
+    logger.debug("Codex 解析: node=%s, script=%s", node, codex_js)
+    return [node, str(codex_js)]
 
 
 class AICallError(Exception):
@@ -162,10 +185,59 @@ class OpenCodeClient(AIClient):
         return _strip_ansi(stdout)
 
 
+class CodexClient(AIClient):
+    """通过 OpenAI Codex CLI (`codex exec`) 进行非交互单次调用。"""
+
+    def __init__(self, timeout: int = 1500):
+        self.timeout = timeout
+
+    def invoke(self, prompt: str, workdir: Path) -> str:
+        cli_prefix = _find_codex()
+        cmd = [
+            *cli_prefix,
+            "exec",
+            "--cd", str(workdir),
+            "--sandbox", "danger-full-access",
+            "--skip-git-repo-check",
+            prompt,
+        ]
+
+        logger.debug("CLI 命令: %s", " ".join(f'"{c}"' if " " in c else c for c in cmd))
+        logger.debug("工作目录: %s", workdir)
+
+        process = subprocess.Popen(
+            cmd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        try:
+            stdout_bytes, stderr_bytes = process.communicate(timeout=self.timeout)
+            returncode = process.returncode
+            logger.debug("退出码: %d", returncode)
+            logger.debug("stdout 长度: %d 字节", len(stdout_bytes or b""))
+        except subprocess.TimeoutExpired:
+            process.kill()
+            stdout_bytes, stderr_bytes = process.communicate()
+            raise AICallError(f"Codex 调用超时（{self.timeout}s）: {workdir}")
+
+        if returncode != 0:
+            stderr = stderr_bytes.decode("utf-8", errors="replace").strip() if stderr_bytes else ""
+            raise AICallError(
+                f"Codex 返回非零退出码 ({returncode}) at {workdir}: {stderr}"
+            )
+
+        stdout = stdout_bytes.decode("utf-8", errors="replace").strip() if stdout_bytes else ""
+        return _strip_ansi(stdout)
+
+
 def get_client(name: str) -> AIClient:
     """工厂函数：根据名称返回对应的 AI 客户端实例。"""
     if name == "claudecode":
         return ClaudeCodeClient()
     if name == "opencode":
         return OpenCodeClient()
+    if name == "codex":
+        return CodexClient()
     raise ValueError(f"不支持的 AI 工具: {name}")

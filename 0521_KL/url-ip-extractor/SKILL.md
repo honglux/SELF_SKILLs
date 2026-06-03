@@ -1,5 +1,5 @@
 ---
-name: url-ip-extractor-v2
+name: url-ip-extractor
 description: |
   [V2改进版] 从工程源码和配置文件中提取所有硬编码的 URL 地址和 IP 地址。采用分步执行、独立 subagent、即时落盘策略，避免上下文溢出。与 V1 相比增强：标准化表格输出、强化提问流程、主Agent过滤修复建议。当用户提到"提取 URL"、"提取 IP 地址"、"提取网址"、"URL/IP 检视"、"网络地址审计"、"硬编码地址查找"时触发此 skill。
 ---

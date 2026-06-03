@@ -1,6 +1,6 @@
 """代码安全问题 AI 扫描器 — 主入口。
 
-遍历代码工程子目录，逐目录调用 AI 进行安全扫描，结果双份落盘。
+遍历代码工程子目录，逐目录调用 AI（ClaudeCode / OpenCode / Codex）进行安全扫描，结果双份落盘。
 """
 
 import argparse
@@ -62,7 +62,7 @@ def setup_logging():
 def parse_args():
     parser = argparse.ArgumentParser(description="代码安全问题 AI 扫描器")
     parser.add_argument("--code-root", required=True, help="代码工程根目录")
-    parser.add_argument("--ai-tool", required=True, choices=["claudecode", "opencode"], help="AI 工具选择")
+    parser.add_argument("--ai-tool", required=True, choices=["claudecode", "opencode", "codex"], help="AI 工具选择")
     parser.add_argument("--prompt-template", required=True, help="Prompt 模板文件路径")
     parser.add_argument("--split-granularity", default="single-folder",
                         choices=["single-folder"], help="代码分割细粒度（默认 single-folder）")

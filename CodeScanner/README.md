@@ -1,13 +1,13 @@
 # 代码安全问题 AI 扫描器
 
-结合 Python 脚本和 AI CLI 工具（ClaudeCode / OpenCode），对代码工程逐目录进行安全漏洞扫描。通过分割子模块、限定 AI 工作目录的方式避免大模型上下文溢出导致的漏报和误报。
+结合 Python 脚本和 AI CLI 工具（ClaudeCode / OpenCode / Codex），对代码工程逐目录进行安全漏洞扫描。通过分割子模块、限定 AI 工作目录的方式避免大模型上下文溢出导致的漏报和误报。
 
 ## 项目结构
 
 ```
 D:\CodeScanner\
 ├── main.py            # 入口、参数解析、日志、目录遍历、Prompt 加载、结果落盘、流程编排
-├── ai_client.py       # AI 客户端抽象层（ClaudeCode / OpenCode）
+├── ai_client.py       # AI 客户端抽象层（ClaudeCode / OpenCode / Codex）
 ├── TestCases/         # 测试用例
 └── output/            # 扫描结果输出（运行时生成）
 ```
@@ -26,7 +26,7 @@ python main.py \
 | 参数 | 必填 | 说明 |
 |------|------|------|
 | `--code-root` | 是 | 代码工程根目录 |
-| `--ai-tool` | 是 | AI 工具选择：`claudecode` 或 `opencode`（均已支持） |
+| `--ai-tool` | 是 | AI 工具选择：`claudecode`、`opencode`、`codex`（均已支持） |
 | `--prompt-template` | 是 | Prompt 模板文件路径（UTF-8） |
 | `--split-granularity` | 否 | 代码分割细粒度，默认 `single-folder`（仅支持此值） |
 | `--debug` | 否 | 开启后将 AI 对话返回的原始信息记录到 `scanner.log` |
@@ -93,6 +93,9 @@ python main.py --code-root D:\CodeScanner\TestCases --ai-tool claudecode --promp
 
 # 使用 OpenCode
 python main.py --code-root D:\CodeScanner\TestCases --ai-tool opencode --prompt-template D:\CodeScanner\Prompts\HardcodedPasswordPrompt.md --debug
+
+# 使用 Codex
+python main.py --code-root D:\CodeScanner\TestCases --ai-tool codex --prompt-template D:\CodeScanner\Prompts\HardcodedPasswordPrompt.md --debug
 ```
 
 `TestCases/` 下预埋了包含安全漏洞的示例代码：

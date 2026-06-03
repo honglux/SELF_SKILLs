@@ -5,7 +5,7 @@
 ```
 D:\CodeScanner\
 ├── main.py            # 入口、参数解析、日志、目录遍历、Prompt加载、结果落盘、流程编排
-├── ai_client.py       # AI 客户端抽象层（基类 + ClaudeCode/OpenCode 实现 + 工厂函数）
+├── ai_client.py       # AI 客户端抽象层（基类 + ClaudeCode/OpenCode/Codex 实现 + 工厂函数）
 └── output/            # 扫描结果输出（运行时生成）
 ```
 
@@ -51,6 +51,36 @@ claude -p "<prompt>" --output-format text --max-turns 15 --permission-mode bypas
 ```bash
 opencode run "<prompt>" --format default --dangerously-skip-permissions
 ```
+
+### 2.3 Codex CLI (非交互单次模式)
+
+核心用法：直接以 prompt 作为位置参数，配合自动化标志禁用交互式 TUI 和沙盒限制。
+
+| 关键参数 | 说明 |
+|----------|------|
+| `--cd <path>` / `-C` | 设定工作目录 |
+| `--ask-for-approval never` / `-a never` | **必用** — 禁用所有交互式确认，否则遇到权限请求会挂起 |
+| `--sandbox danger-full-access` | **必用** — 解除 OS 级沙盒（Seatbelt/Landlock/AppContainer），允许文件系统和网络访问 |
+| `--format raw` | 可选 — 强制纯文本输出，避免 TUI 元素 |
+
+**Headless Killswitch（关键）：**
+- Codex 启动时会检测是否连接了交互终端（TTY）。若 `subprocess.Popen` 继承了控制台的 `stdin`，Codex 会误以为用户在操作，启动 TUI 并挂起。
+- 解决方案：`stdin=subprocess.DEVNULL` — 让 Codex 侦测到无键盘输入，自动切换为非交互模式。
+
+**管道死锁规避：**
+- Codex 输出可能非常冗长，必须使用 `subprocess.Popen` + `.communicate()` 持续清空系统管道缓冲区（Windows 64KB 上限），避免死锁。
+- 超时时需先 `process.kill()` 再 `.communicate()` 清理残留句柄。
+
+**ANSI 转义序列：**
+- Codex 输出可能包含 ANSI 转义字符，需用正则 `\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])` 去除。
+
+**结论 — 我们将使用的命令：**
+```bash
+codex --cd <workdir> --ask-for-approval never --sandbox danger-full-access "<prompt>"
+```
+- 工作目录通过 `--cd` 设定（Codex 自身支持，不依赖 `cwd`）
+- `stdin=subprocess.DEVNULL` 确认为必选（headless killswitch）
+- 超时：1500s
 
 ---
 
@@ -198,7 +228,8 @@ ai_client.py
 ├── class AIClient(ABC)              # 抽象基类
 │   └── invoke(prompt, workdir) -> str
 ├── class ClaudeCodeClient(AIClient) # ClaudeCode CLI 实现
-├── class OpenCodeClient(AIClient)   # OpenCode CLI 实现（占位）
+├── class OpenCodeClient(AIClient)   # OpenCode CLI 实现
+├── class CodexClient(AIClient)      # Codex CLI 实现
 └── get_client(name) -> AIClient     # 工厂函数
 ```
 
@@ -224,12 +255,22 @@ claude -p "<prompt>" --output-format text --max-turns 15 --permission-mode bypas
 ### 4.4 OpenCodeClient
 
 ```bash
-# 命令模板（占位）
-opencode run "<prompt>" --format default
+# 命令模板
+opencode run "<prompt>" --format default --dangerously-skip-permissions
 ```
-- 暂抛出 `NotImplementedError`，待后续实现
 
-### 4.5 工厂函数
+### 4.5 CodexClient
+
+```bash
+# 命令模板
+codex --cd <workdir> --ask-for-approval never --sandbox danger-full-access "<prompt>"
+```
+- `stdin=subprocess.DEVNULL` 作为 headless killswitch，防止 Codex 检测到 TTY 后挂起等待用户输入
+- 使用 `Popen` + `.communicate()` 规避管道缓冲区死锁
+- 输出需通过 `_strip_ansi()` 去除 ANSI 转义序列
+- 超时：1500s
+
+### 4.6 工厂函数
 
 ```python
 def get_client(name: str) -> AIClient:
@@ -237,6 +278,8 @@ def get_client(name: str) -> AIClient:
         return ClaudeCodeClient()
     if name == "opencode":
         return OpenCodeClient()
+    if name == "codex":
+        return CodexClient()
     raise ValueError(f"Unsupported AI tool: {name}")
 ```
 
@@ -283,7 +326,8 @@ output/
 3. **并发**：串行
 4. **目录过滤**：行业标准黑名单 + `os.walk()` 原地剪枝
 5. **ClaudeCode 调用方式**：`claude -p "<prompt>" --output-format text --max-turns 15 --permission-mode bypassPermissions`
-6. **OpenCode 调用方式**：`opencode run "<prompt>" --format default`（占位，待后续实现确认）
+6. **OpenCode 调用方式**：`opencode run "<prompt>" --format default --dangerously-skip-permissions`
+7. **Codex 调用方式**：`codex --cd <workdir> --ask-for-approval never --sandbox danger-full-access "<prompt>"`
 
 ---
 
