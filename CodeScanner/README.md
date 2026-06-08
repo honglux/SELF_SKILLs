@@ -89,7 +89,7 @@ output/
 
 ```bash
 # 使用 ClaudeCode
-python main.py --code-root D:\CodeScanner\TestCases --ai-tool claudecode --prompt-template D:\CodeScanner\Prompts\HardcodedPasswordPrompt.md
+python main.py --code-root D:\CodeScanner\TestCases --ai-tool claudecode --prompt-template D:\CodeScanner\Prompts\HardcodedPasswordPrompt.md --debug
 
 # 使用 OpenCode
 python main.py --code-root D:\CodeScanner\TestCases --ai-tool opencode --prompt-template D:\CodeScanner\Prompts\HardcodedPasswordPrompt.md --debug
