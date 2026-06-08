@@ -80,7 +80,7 @@ rtsp://.*:.*@  |  http://.*:.*@  |  ftp://.*:.*@
 
 ## 二、Subagent 使用
 
-对当前目录下每个 ≤1000 行的源文件，启动独立 subagent 分析。忽略 .md 文件和 `AI测试结果.md`。
+对当前目录下每个源文件，启动独立 subagent 分析。忽略 .md 文件和 `AI测试结果.md`。
 
 ### Subagent Prompt 模板：
 
