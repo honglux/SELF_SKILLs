@@ -29,7 +29,7 @@ python main.py \
 | `--ai-tool` | 是 | AI 工具选择：`claudecode`、`opencode`、`codex`（均已支持） |
 | `--prompt-template` | 是 | Prompt 模板文件路径（UTF-8） |
 | `--split-granularity` | 否 | 代码分割细粒度，默认 `single-folder`（仅支持此值） |
-| `--debug` | 否 | 开启后将 AI 对话返回的原始信息记录到 `scanner.log` |
+| `--debug` | 否 | 开启后 `scanner.log` 记录 DEBUG 级别详情（CLI 命令、Prompt 内容、AI 对话原文等），关闭时仅记录 INFO 级别扫描进度 |
 
 ### Prompt 模板建议
 
@@ -108,6 +108,6 @@ python main.py --code-root D:\CodeScanner\TestCases --ai-tool codex --prompt-tem
 
 - 需要预先安装所选 AI 工具的 CLI 并确保在 PATH 中可用
 - AI 调用为阻塞串行模式，大工程耗时较长，建议后台运行
-- 日志双通道：控制台输出扫描进度，`scanner.log` 记录完整调试信息（CLI 命令、退出码、耗时）
+- 日志双通道：控制台始终输出扫描进度；`scanner.log` 默认记录 INFO 级别信息（进度、退出码、耗时），加 `--debug` 后额外记录 CLI 命令、Prompt 内容及 AI 对话原文
 - AI 调用默认超时 1000s，超时或缺结果文件时记录错误并跳过当前目录，继续扫描后续目录
 - 扫描结束会汇总成功/失败数量；CLI 未找到仍会立即终止（无法继续）

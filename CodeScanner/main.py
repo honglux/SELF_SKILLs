@@ -41,7 +41,7 @@ IGNORE_DIRS = {
 
 # ── 日志系统 ──────────────────────────────────────────────────────────
 
-def setup_logging():
+def setup_logging(debug: bool = False):
     logger.setLevel(logging.DEBUG)
 
     # 控制台：INFO 级别
@@ -50,9 +50,9 @@ def setup_logging():
     ch.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)-5s %(message)s", datefmt="%H:%M:%S"))
     logger.addHandler(ch)
 
-    # 文件：DEBUG 级别
+    # 文件：DEBUG 级别仅在 --debug 模式下启用，否则 INFO
     fh = logging.FileHandler("scanner.log", encoding="utf-8")
-    fh.setLevel(logging.DEBUG)
+    fh.setLevel(logging.DEBUG if debug else logging.INFO)
     fh.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)-5s %(message)s"))
     logger.addHandler(fh)
 
@@ -134,7 +134,7 @@ def append_combined_result(result: str, workdir: Path, code_root: Path, combined
 
 def main():
     args = parse_args()
-    setup_logging()
+    setup_logging(debug=args.debug)
 
     code_root = Path(args.code_root).resolve()
     logger.info("CodeScanner 启动")
@@ -164,7 +164,7 @@ def main():
         stale_result = workdir / RESULT_FILE
         if stale_result.is_file():
             stale_result.unlink()
-            logger.debug("已清理残留结果文件: %s", stale_result)
+            logger.info("已清理残留结果文件: %s", stale_result)
 
         try:
             stdout = client.invoke(prompt, workdir)
@@ -183,7 +183,7 @@ def main():
             failed += 1
             continue
         result = result_file.read_text(encoding="utf-8")
-        logger.debug("读取结果文件: %s (%d 字符)", result_file, len(result))
+        logger.info("读取结果文件: %s (%d 字符)", result_file, len(result))
 
         elapsed = time.time() - t0
         logger.info("[%d/%d] 完成 (耗时 %.0fs)", i, total, elapsed)

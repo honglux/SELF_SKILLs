@@ -111,7 +111,7 @@ class ClaudeCodeClient(AIClient):
         ]
 
         logger.debug("CLI 命令: %s", " ".join(f'"{c}"' if " " in c else c for c in cmd))
-        logger.debug("工作目录: %s", workdir)
+        logger.info("工作目录: %s", workdir)
 
         process = subprocess.Popen(
             cmd,
@@ -123,8 +123,8 @@ class ClaudeCodeClient(AIClient):
         try:
             stdout_bytes, stderr_bytes = process.communicate(timeout=self.timeout)
             returncode = process.returncode
-            logger.debug("退出码: %d", returncode)
-            logger.debug("stdout 长度: %d 字节", len(stdout_bytes or b""))
+            logger.info("退出码: %d", returncode)
+            logger.info("stdout 长度: %d 字节", len(stdout_bytes or b""))
         except subprocess.TimeoutExpired:
             process.kill()
             stdout_bytes, stderr_bytes = process.communicate()
@@ -132,8 +132,10 @@ class ClaudeCodeClient(AIClient):
 
         if returncode != 0:
             stderr = stderr_bytes.decode("utf-8", errors="replace").strip() if stderr_bytes else ""
+            stdout = stdout_bytes.decode("utf-8", errors="replace").strip() if stdout_bytes else ""
+            detail = f"stderr: {stderr}" if stderr else f"stdout: {stdout}" if stdout else "(无输出)"
             raise AICallError(
-                f"ClaudeCode 返回非零退出码 ({returncode}) at {workdir}: {stderr}"
+                f"ClaudeCode 返回非零退出码 ({returncode}) at {workdir}: {detail}"
             )
 
         stdout = stdout_bytes.decode("utf-8", errors="replace").strip() if stdout_bytes else ""
@@ -157,7 +159,7 @@ class OpenCodeClient(AIClient):
         ]
 
         logger.debug("CLI 命令: %s", " ".join(f'"{c}"' if " " in c else c for c in cmd))
-        logger.debug("工作目录: %s", workdir)
+        logger.info("工作目录: %s", workdir)
 
         process = subprocess.Popen(
             cmd,
@@ -168,8 +170,8 @@ class OpenCodeClient(AIClient):
         try:
             stdout_bytes, stderr_bytes = process.communicate(timeout=self.timeout)
             returncode = process.returncode
-            logger.debug("退出码: %d", returncode)
-            logger.debug("stdout 长度: %d 字节", len(stdout_bytes or b""))
+            logger.info("退出码: %d", returncode)
+            logger.info("stdout 长度: %d 字节", len(stdout_bytes or b""))
         except subprocess.TimeoutExpired:
             process.kill()
             stdout_bytes, stderr_bytes = process.communicate()
@@ -177,8 +179,10 @@ class OpenCodeClient(AIClient):
 
         if returncode != 0:
             stderr = stderr_bytes.decode("utf-8", errors="replace").strip() if stderr_bytes else ""
+            stdout = stdout_bytes.decode("utf-8", errors="replace").strip() if stdout_bytes else ""
+            detail = f"stderr: {stderr}" if stderr else f"stdout: {stdout}" if stdout else "(无输出)"
             raise AICallError(
-                f"OpenCode 返回非零退出码 ({returncode}) at {workdir}: {stderr}"
+                f"OpenCode 返回非零退出码 ({returncode}) at {workdir}: {detail}"
             )
 
         stdout = stdout_bytes.decode("utf-8", errors="replace").strip() if stdout_bytes else ""
@@ -203,7 +207,7 @@ class CodexClient(AIClient):
         ]
 
         logger.debug("CLI 命令: %s", " ".join(f'"{c}"' if " " in c else c for c in cmd))
-        logger.debug("工作目录: %s", workdir)
+        logger.info("工作目录: %s", workdir)
 
         process = subprocess.Popen(
             cmd,
@@ -215,8 +219,8 @@ class CodexClient(AIClient):
         try:
             stdout_bytes, stderr_bytes = process.communicate(timeout=self.timeout)
             returncode = process.returncode
-            logger.debug("退出码: %d", returncode)
-            logger.debug("stdout 长度: %d 字节", len(stdout_bytes or b""))
+            logger.info("退出码: %d", returncode)
+            logger.info("stdout 长度: %d 字节", len(stdout_bytes or b""))
         except subprocess.TimeoutExpired:
             process.kill()
             stdout_bytes, stderr_bytes = process.communicate()
@@ -224,8 +228,10 @@ class CodexClient(AIClient):
 
         if returncode != 0:
             stderr = stderr_bytes.decode("utf-8", errors="replace").strip() if stderr_bytes else ""
+            stdout = stdout_bytes.decode("utf-8", errors="replace").strip() if stdout_bytes else ""
+            detail = f"stderr: {stderr}" if stderr else f"stdout: {stdout}" if stdout else "(无输出)"
             raise AICallError(
-                f"Codex 返回非零退出码 ({returncode}) at {workdir}: {stderr}"
+                f"Codex 返回非零退出码 ({returncode}) at {workdir}: {detail}"
             )
 
         stdout = stdout_bytes.decode("utf-8", errors="replace").strip() if stdout_bytes else ""
