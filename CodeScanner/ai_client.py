@@ -96,7 +96,7 @@ class AIClient(ABC):
 class ClaudeCodeClient(AIClient):
     """通过 ClaudeCode CLI (`claude -p`) 进行非交互单次调用。"""
 
-    def __init__(self, max_turns: int = 15, timeout: int = 1000):
+    def __init__(self, max_turns: int = 50, timeout: int = 1000):
         self.max_turns = max_turns
         self.timeout = timeout
 
