@@ -8,8 +8,12 @@
 D:\CodeScanner\
 ├── main.py            # 入口、参数解析、日志、目录遍历、Prompt 加载、结果落盘、流程编排
 ├── ai_client.py       # AI 客户端抽象层（ClaudeCode / OpenCode / Codex）
+├── Prompts/           # Prompt 模板
+│   ├── V1/            #   Skill 模式（9 类）
+│   └── V2/            #   Agent 模式
 ├── TestCases/         # 测试用例
-└── output/            # 扫描结果输出（运行时生成）
+├── output/            # 扫描结果输出（运行时生成）
+└── PLAN_AGENT_MIGRATION.md  # Agent 迁移设计文档
 ```
 
 ## 使用方法
@@ -31,13 +35,25 @@ python main.py \
 | `--split-granularity` | 否 | 代码分割细粒度，默认 `single-folder`（仅支持此值） |
 | `--debug` | 否 | 开启后 `scanner.log` 记录 DEBUG 级别详情（CLI 命令、Prompt 内容、AI 对话原文等），关闭时仅记录 INFO 级别扫描进度 |
 
-### Prompt 模板建议
+### Prompt 模板
+
+提供两种模式：
+
+**V1 — Skill 模式**（`Prompts/V1/`，通过 `/skill-name` 调用）：
+- `HardcodedPasswordPrompt.md` — 调用 `/hardcoded-secret-scan-v3`
+- 其余 8 类扫描类推（Account / Crypto / Port / Protocol / Cert / URL / Random / SensitivePrint）
+
+**V2 — Agent 模式**（`Prompts/V2/`，通过自定义 Agent Profile 扫描，推荐）：
+- `HardcodedPasswordPromptV2.md` — 调用全局 Agent `~/.claude/agents/hardcoded-secret-agent.md`
+- Agent 模式优势：规则与流程解耦、独立上下文不占主会话、模型自动跟随主会话配置
+- **前置条件**：需先将 Agent Profile 部署到 `~/.claude/agents/`。可使用 `security-skill-to-agent` skill 从 V3 Skill 自动生成
+- 其余 8 类 V2 Prompt 按需生成
 
 Prompt 中应明确：
 1. 约束 AI 仅扫描当前工作目录，避免访问子文件夹
 2. 要求 AI 将结果写入固定文件 `AI测试结果.md`（程序以此读取结果）
 
-示例 (`Prompts/HardcodedPasswordPrompt.md`)：
+示例 (`Prompts/V1/HardcodedPasswordPrompt.md`)：
 
 ```
 本次任务将扫描代码中所有的密码秘钥硬编码情景。
@@ -87,15 +103,23 @@ output/
 
 ## 自测
 
+### V2 Agent 模式（推荐）
+
+```bash
+python main.py --code-root D:\CodeScanner\TestCases --ai-tool claudecode --prompt-template D:\CodeScanner\Prompts\V2\HardcodedPasswordPromptV2.md --debug
+```
+
+### V1 Skill 模式
+
 ```bash
 # 使用 ClaudeCode
-python main.py --code-root D:\CodeScanner\TestCases --ai-tool claudecode --prompt-template D:\CodeScanner\Prompts\HardcodedPasswordPrompt.md --debug
+python main.py --code-root D:\CodeScanner\TestCases --ai-tool claudecode --prompt-template D:\CodeScanner\Prompts\V1\HardcodedPasswordPrompt.md --debug
 
 # 使用 OpenCode
-python main.py --code-root D:\CodeScanner\TestCases --ai-tool opencode --prompt-template D:\CodeScanner\Prompts\HardcodedPasswordPrompt.md --debug
+python main.py --code-root D:\CodeScanner\TestCases --ai-tool opencode --prompt-template D:\CodeScanner\Prompts\V1\HardcodedPasswordPrompt.md --debug
 
 # 使用 Codex
-python main.py --code-root D:\CodeScanner\TestCases --ai-tool codex --prompt-template D:\CodeScanner\Prompts\HardcodedPasswordPrompt.md --debug
+python main.py --code-root D:\CodeScanner\TestCases --ai-tool codex --prompt-template D:\CodeScanner\Prompts\V1\HardcodedPasswordPrompt.md --debug
 ```
 
 `TestCases/` 下预埋了包含安全漏洞的示例代码：
@@ -107,7 +131,8 @@ python main.py --code-root D:\CodeScanner\TestCases --ai-tool codex --prompt-tem
 ## 注意事项
 
 - 需要预先安装所选 AI 工具的 CLI 并确保在 PATH 中可用
+- **Agent 模式（V2）**：需将 Agent Profile 部署到 `~/.claude/agents/` 目录（全局位置），否则扫描外部工程时无法被发现。可使用 `security-skill-to-agent` skill 从 V3 Skill 自动生成
 - AI 调用为阻塞串行模式，大工程耗时较长，建议后台运行
 - 日志双通道：控制台始终输出扫描进度；`scanner.log` 默认记录 INFO 级别信息（进度、退出码、耗时），加 `--debug` 后额外记录 CLI 命令、Prompt 内容及 AI 对话原文
-- AI 调用默认超时 1000s，超时或缺结果文件时记录错误并跳过当前目录，继续扫描后续目录
+- AI 调用默认超时 1000s（Codex 1500s），max_turns 默认 50；超时或缺结果文件时记录错误并跳过当前目录，继续扫描后续目录
 - 扫描结束会汇总成功/失败数量；CLI 未找到仍会立即终止（无法继续）
