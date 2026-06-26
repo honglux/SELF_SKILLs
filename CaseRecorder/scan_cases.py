@@ -43,17 +43,27 @@ def read_input(path):
 
 
 def _read_csv(path):
-    with open(path, "r", encoding="utf-8-sig") as f:
-        reader = csv.reader(f)
-        header = next(reader, None)
-        if header is None:
-            print("错误：输入文件为空。")
-            sys.exit(1)
-        rows = []
-        for row in reader:
-            if len(row) >= 4:
-                rows.append((row[0], row[1], row[2], row[3]))
-    return rows
+    def _do_read(encoding, errors=None):
+        kwargs = {"encoding": encoding, "newline": ""}
+        if errors:
+            kwargs["errors"] = errors
+        with open(path, "r", **kwargs) as f:
+            reader = csv.reader(f)
+            header = next(reader, None)
+            if header is None:
+                print("错误：输入文件为空。")
+                sys.exit(1)
+            rows = []
+            for row in reader:
+                if len(row) >= 4:
+                    rows.append((row[0], row[1], row[2], row[3]))
+        return rows
+
+    try:
+        return _do_read("utf-8-sig")
+    except UnicodeDecodeError:
+        logger.info("UTF-8 解码失败，回退到 GBK 编码读取")
+        return _do_read("gbk", errors="ignore")
 
 
 def _read_xlsx(path):
