@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.idea/
+.vscode/
+.vs/
+*.swp
+*.swo
+
+# Claude Code
+.claude/
+
+# 生成输出（case 提取 & 扫描结果）
+case_statements.csv
+case_statements.xlsx
+scan_results.csv
+scan_results.xlsx
+
+# 日志
+*.log
+
+# AI 生成的 case 报告
+reports/
+test_output/reports/
+
+# 临时测试文件
+test_*.csv
+test_*.xlsx
