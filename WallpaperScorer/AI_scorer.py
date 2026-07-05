@@ -532,6 +532,9 @@ def main():
             print(f"  |  Aesthetic: {aesth_report.final_score}/10", end="")
         print(f"\n{'=' * 60}\n")
 
+    except KeyboardInterrupt:
+        logger.info("Interrupted by user (Ctrl+C).")
+        print("\nInterrupted.")
     except Exception as e:
         logger.error("Scoring failed: %s", e)
         print(f"Error: {e}")

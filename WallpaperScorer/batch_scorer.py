@@ -56,13 +56,27 @@ def reason_join(report: ScoreReport) -> str:
     return " | ".join(parts)
 
 
+def load_completed(csv_path: str) -> set[str]:
+    """Read existing CSV and return the set of already-processed absolute paths."""
+    if not os.path.exists(csv_path):
+        return set()
+    completed = set()
+    with open(csv_path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            path = row.get("file_path", "").strip()
+            if path:
+                completed.add(path)
+    return completed
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Batch-score wallpapers and cluster by total score."
+        description="Batch-score wallpapers and cluster by total score. Supports resume."
     )
     parser.add_argument("-i", "--input", required=True, help="Input folder of images")
     parser.add_argument("-o", "--output", default="batch_output", help="Output directory (default: batch_output)")
@@ -86,75 +100,97 @@ def main():
     output_dir = os.path.abspath(args.output)
     os.makedirs(output_dir, exist_ok=True)
 
-    images = find_images(input_dir)
-    if not images:
+    all_images = find_images(input_dir)
+    if not all_images:
         print(f"No images found in: {input_dir}")
         return
 
-    logger.info("Found %d image(s) in %s", len(images), input_dir)
+    csv_path = os.path.join(output_dir, "scores.csv")
+    fieldnames = ["file_path", "technical_score", "aesthetic_score", "total_score", "tech_reason", "aesth_reason"]
+
+    # --- Resume: load already-completed images ---
+    completed = load_completed(csv_path)
+    images = [p for p in all_images if p not in completed]
+
+    if completed:
+        logger.info("Resume: %d already completed, %d remaining (of %d total)",
+                    len(completed), len(images), len(all_images))
+    else:
+        logger.info("Found %d image(s) in %s", len(images), input_dir)
+
+    if not images:
+        print("All images already processed — nothing to do.")
+        return
 
     # --- Init scorers ---
     scorer_kwargs = dict(debug=args.debug, max_tokens=max_tokens)
     tech_scorer = WallpaperScorer(prompts_dir=tech_prompts_dir, **scorer_kwargs)
     aesth_scorer = WallpaperScorer(prompts_dir=aesth_prompts_dir, **scorer_kwargs)
 
-    csv_path = os.path.join(output_dir, "scores.csv")
-    fieldnames = ["file_path", "technical_score", "aesthetic_score", "total_score", "tech_reason", "aesth_reason"]
-
     scored = 0
-    with open(csv_path, "w", newline="", encoding="utf-8") as csvfile:
+    interrupted = False
+    file_mode = "a" if completed else "w"
+    with open(csv_path, file_mode, newline="", encoding="utf-8") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
+        if not completed:
+            writer.writeheader()
 
-        for idx, img_path in enumerate(images, 1):
-            rel_path = os.path.relpath(img_path, input_dir)
-            logger.info("[%d/%d] %s", idx, len(images), rel_path)
+        try:
+            for idx, img_path in enumerate(images, 1):
+                logger.info("[%d/%d] %s", idx, len(images), os.path.basename(img_path))
 
-            try:
-                tech_report = tech_scorer.score(img_path)
-                aesth_report = aesth_scorer.score(img_path)
-            except Exception as e:
-                logger.error("[%d/%d] Failed: %s — %s", idx, len(images), rel_path, e)
-                continue
+                try:
+                    tech_report = tech_scorer.score(img_path)
+                    aesth_report = aesth_scorer.score(img_path)
+                except Exception as e:
+                    logger.error("[%d/%d] Failed: %s — %s", idx, len(images), os.path.basename(img_path), e)
+                    continue
 
-            tech_score = tech_report.final_score
-            aesth_score = aesth_report.final_score
+                tech_score = tech_report.final_score
+                aesth_score = aesth_report.final_score
 
-            # --- Double-perfect tiebreaker ---
-            if tech_score == 10 and aesth_score == 10:
-                logger.info("  Both 10/10 — running wallpaper fitness tiebreaker...")
-                fitness_scorer = WallpaperScorer(prompts_dir=tech_prompts_dir, **scorer_kwargs)
-                fitness_score = fitness_scorer.wallpaper_fitness_score(img_path)
-                if fitness_score is not None:
-                    aesth_score = fitness_score
+                # --- Double-perfect tiebreaker ---
+                if tech_score == 10 and aesth_score == 10:
+                    logger.info("  Both 10/10 — running wallpaper fitness tiebreaker...")
+                    fitness_scorer = WallpaperScorer(prompts_dir=tech_prompts_dir, **scorer_kwargs)
+                    fitness_score = fitness_scorer.wallpaper_fitness_score(img_path)
+                    if fitness_score is not None:
+                        aesth_score = fitness_score
 
-            total_score = int(tech_score * 2 + aesth_score)
+                total_score = int(tech_score * 2 + aesth_score)
 
-            row = {
-                "file_path": rel_path,
-                "technical_score": tech_score,
-                "aesthetic_score": aesth_score,
-                "total_score": total_score,
-                "tech_reason": reason_join(tech_report),
-                "aesth_reason": reason_join(aesth_report),
-            }
-            writer.writerow(row)
-            csvfile.flush()
-            scored += 1
+                row = {
+                    "file_path": img_path,
+                    "technical_score": tech_score,
+                    "aesthetic_score": aesth_score,
+                    "total_score": total_score,
+                    "tech_reason": reason_join(tech_report),
+                    "aesth_reason": reason_join(aesth_report),
+                }
+                writer.writerow(row)
+                csvfile.flush()
+                scored += 1
 
-            # --- Cluster ---
-            cluster_dir = os.path.join(output_dir, str(total_score))
-            os.makedirs(cluster_dir, exist_ok=True)
-            dst = os.path.join(cluster_dir, os.path.basename(img_path))
-            shutil.copy2(img_path, dst)
+                # --- Cluster ---
+                cluster_dir = os.path.join(output_dir, str(total_score))
+                os.makedirs(cluster_dir, exist_ok=True)
+                dst = os.path.join(cluster_dir, os.path.basename(img_path))
+                shutil.copy2(img_path, dst)
 
-            logger.info("  Tech: %d/10  Aesth: %d/10  Total: %d  -> %s",
-                        tech_score, aesth_score, total_score,
-                        os.path.relpath(cluster_dir, output_dir))
+                logger.info("  Tech: %d/10  Aesth: %d/10  Total: %d  -> %s",
+                            tech_score, aesth_score, total_score,
+                            os.path.relpath(cluster_dir, output_dir))
+
+        except KeyboardInterrupt:
+            interrupted = True
+            logger.info("Interrupted by user (Ctrl+C). Saving progress...")
 
     # --- Summary ---
     print(f"\n{'=' * 50}")
-    print(f"Batch complete: {scored}/{len(images)} scored")
+    if interrupted:
+        print(f"INTERRUPTED — progress saved. {scored}/{len(images)} scored this run.")
+    else:
+        print(f"Batch complete: {scored}/{len(images)} scored")
     print(f"CSV: {csv_path}")
     print(f"Clusters: {output_dir}/")
     print(f"{'=' * 50}\n")

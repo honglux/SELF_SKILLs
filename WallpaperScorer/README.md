@@ -128,8 +128,12 @@ python batch_scorer.py -i Test/ -o batch_output -f
 | `--debug` / `--no-debug` | 否 | on | 日志详细度 |
 
 **输出：**
-- `batch_output/scores.csv` — 逐行即时写入，字段：`file_path, technical_score, aesthetic_score, total_score, tech_reason, aesth_reason`
+- `batch_output/scores.csv` — 逐行即时写入（完成一张写一行），支持断点续接。字段：`file_path`（绝对路径）, `technical_score`, `aesthetic_score`, `total_score`, `tech_reason`, `aesth_reason`
 - `batch_output/<total_score>/` — 按总分聚类文件夹，复制图片
+
+**断点续接**：再次运行相同命令时，自动读取已有 CSV 中 `file_path` 列，跳过已完成的图片，只处理剩余。CSV 以追加模式写入，不会覆盖已有记录。
+
+**手动中断**：`Ctrl+C` 安全退出——已完成图片的 CSV 记录和聚类文件不丢失，下次运行自动续接。
 
 > **总分公式**：`total_score = tech_score × 2 + aesthetic_score`（范围 3~30）
 
