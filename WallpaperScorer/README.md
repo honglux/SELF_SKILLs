@@ -13,7 +13,7 @@ WallpaperScorer/
 ├── scoring_prompt.md                    # 原始合并版技术提示词（参考）
 ├── aesthetic_prompt.md                  # 原始合并版美学提示词（参考）
 ├── prompts/                             # 标准模式 — 技术评分维度
-│   ├── 01_structural_integrity.md       #   结构完整性与形变缺陷（max -4.0）
+│   ├── 01_structural_integrity.md       #   结构完整性与形变缺陷（max -5.0）
 │   ├── 02_subject_integration.md        #   主体与背景整合 & 光照（max -3.0）
 │   ├── 03_composition.md                #   构图与壁纸适配性（max -2.5）
 │   ├── _fallback_recover.md             #   恢复提示词（截断/报错时自动使用）
@@ -22,8 +22,9 @@ WallpaperScorer/
 │   └── ...（同 prompts/，思考约束改为深度模式）
 ├── prompts_aesthetic/                   # 标准模式 — 美学评分维度
 │   ├── 01_dynamic_lighting.md           #   动态光照与明暗对比（max -4.0）
-│   ├── 02_cinematic_framing.md          #   电影式取景与空间深度（max -3.0）
+│   ├── 02_cinematic_framing.md          #   电影式取景与空间深度（max -4.0）
 │   ├── 03_color_harmony.md              #   色彩和谐与氛围深度（max -3.0）
+│   ├── 04_rendering_quality.md           #   渲染质量（max -2.0）
 │   └── _fallback_recover.md             #   恢复提示词
 ├── prompts_aesthetic_full/              # 全力模式 — 美学评分维度（无思考约束）
 │   └── ...（同 prompts_aesthetic/，思考约束改为深度模式）
@@ -46,7 +47,8 @@ WallpaperScorer/
     ├─ Aesthetic Suite (prompts_aesthetic/ 或 prompts_aesthetic_full/)
     │   ├─→ 动态光照          → deduction
     │   ├─→ 电影式取景        → deduction
-    │   └─→ 色彩和谐          → deduction
+    │   ├─→ 色彩和谐          → deduction
+    │   └─→ 渲染质量          → deduction
     │               │
     │               ▼ → Aesthetic Score (1-10)
     │
@@ -66,7 +68,7 @@ WallpaperScorer/
 
 | # | 维度 | 最大扣分 | 检查项 |
 |---|------|:---:|------|
-| 1 | 结构完整性与形变缺陷 | -4.0 | AI 痕迹（多余手指、肢体扭曲、物体融合）；线稿断裂/边界渗透 |
+| 1 | 结构完整性与形变缺陷 | -5.0 | AI 痕迹（多余手指、肢体扭曲、物体融合）；线稿断裂/边界渗透 |
 | 2 | 主体与背景整合 & 光照 | -3.0 | "贴纸感"（缺少阴影/接触点）；光源方向不一致 |
 | 3 | 构图与壁纸适配性 | -2.5 | 主体被边缘尴尬裁切；缺少前景/中景/背景层次 |
 
@@ -75,8 +77,9 @@ WallpaperScorer/
 | # | 维度 | 最大扣分 | 检查项 |
 |---|------|:---:|------|
 | 1 | 动态光照与明暗对比 | -4.0 | 光照扁平无方向性；阴影发灰或高光溢出，缺乏电影级动态范围 |
-| 2 | 电影式取景与空间深度 | -3.0 | 构图扁平缺乏景深；取景随意（头部空间不当、背景杂乱抢镜） |
+| 2 | 电影式取景与空间深度 | -4.0 | 构图扁平缺乏景深；取景随意/背景杂乱；构图过度对称僵化 |
 | 3 | 色彩和谐与氛围深度 | -3.0 | 调色板浑浊混乱无统一情绪；缺乏大气透视（雾霭、光线衰减） |
+| 4 | 渲染质量 | -2.0 | 颗粒噪点、过度锐化、视觉混沌杂乱 |
 
 > 扣分规则：**0.5 增量**，鼓励部分扣分而非全有或全无。Prompt 内要求严格审视，不轻易给满分。
 
@@ -128,7 +131,7 @@ python batch_scorer.py -i Test/ -o batch_output -f
 | `--debug` / `--no-debug` | 否 | on | 日志详细度 |
 
 **输出：**
-- `batch_output/scores.csv` — 逐行即时写入（完成一张写一行），支持断点续接。字段：`file_path`（绝对路径）, `technical_score`, `aesthetic_score`, `total_score`, `tech_reason`, `aesth_reason`
+- `batch_output/scores.csv` — 逐行即时写入（完成一张写一行），支持断点续接。字段：`file_path`（绝对路径）, `technical_score`, `aesthetic_score`, `total_score`, `tech_reason`, `aesth_reason`。reason 列格式：`[维度名 -扣分] 原因 | ...`，可直接定位每个维度的扣分项
 - `batch_output/<total_score>/` — 按总分聚类文件夹，复制图片
 
 **断点续接**：再次运行相同命令时，自动读取已有 CSV 中 `file_path` 列，跳过已完成的图片，只处理剩余。CSV 以追加模式写入，不会覆盖已有记录。

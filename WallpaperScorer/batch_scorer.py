@@ -51,8 +51,8 @@ def find_images(folder: str) -> list[str]:
 
 
 def reason_join(report: ScoreReport) -> str:
-    """Concatenate all dimension reasons into one string."""
-    parts = [f"[{d.name}] {d.reason}" for d in report.dimensions]
+    """Concatenate all dimension reasons with their deduction values."""
+    parts = [f"[{d.name} -{d.deduction}] {d.reason}" for d in report.dimensions]
     return " | ".join(parts)
 
 

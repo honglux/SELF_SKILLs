@@ -124,6 +124,7 @@ class WallpaperScorer:
 
         Returns a ScoreReport with per-dimension details and final score.
         """
+        self._current_file = os.path.basename(image_path)
         prompts = self._load_prompts()
         image_b64 = self._encode_image(image_path)
 
@@ -154,6 +155,11 @@ class WallpaperScorer:
             print(f"  Recovered:        {report.recovered_count} dimension(s)")
         print(f"{'=' * 60}\n")
 
+    def _tag(self, name: str) -> str:
+        """Return a log prefix like [file.png | dimension_name]."""
+        f = getattr(self, '_current_file', '?')
+        return f"[{f} | {name}]"
+
     def wallpaper_fitness_score(self, image_path: str) -> int | None:
         """Tiebreaker: if both tech and aesthetic are perfect, ask the model
         one more time whether this image truly works as a wallpaper.
@@ -164,13 +170,14 @@ class WallpaperScorer:
         if not fitness_prompt:
             return None
 
+        self._current_file = os.path.basename(image_path)
         image_b64 = self._encode_image(image_path)
-        logger.info("[fitness] Running wallpaper fitness tiebreaker...")
+        logger.info("%s Running wallpaper fitness tiebreaker...", self._tag("fitness"))
 
         try:
             thinking, raw = self._call_vision(fitness_prompt, image_b64)
         except Exception as exc:
-            logger.error("[fitness] API call failed: %s", exc)
+            logger.error("%s API call failed: %s", self._tag("fitness"), exc)
             return None
 
         self._log_thinking("fitness", thinking)
@@ -178,13 +185,13 @@ class WallpaperScorer:
 
         parsed = self._extract_json(raw) if raw else None
         if parsed is None:
-            logger.warning("[fitness] No valid JSON, skipping tiebreaker")
+            logger.warning("%s No valid JSON, skipping tiebreaker", self._tag("fitness"))
             return None
 
         deduction = float(parsed.get("deduction", 0))
         reason = parsed.get("reason", "")
         score = max(1, int((10.0 - deduction) // 1))
-        logger.info("[fitness] Deduction: %s | Score: %s/10 | Reason: %s", deduction, score, reason)
+        logger.info("%s Deduction: %s | Score: %s/10 | Reason: %s", self._tag("fitness"), deduction, score, reason)
         return score
 
     def _load_fitness_prompt(self) -> str | None:
@@ -200,7 +207,7 @@ class WallpaperScorer:
 
     def _score_dimension(self, name: str, prompt: str, image_b64: str) -> DimensionResult:
         """Score a single dimension. Falls back to text-only recovery on failure."""
-        logger.info("[%s] Evaluating...", name)
+        logger.info("%s Evaluating...", self._tag(name))
 
         thinking: str = ""
         raw: str = ""
@@ -209,7 +216,7 @@ class WallpaperScorer:
         try:
             thinking, raw = self._call_vision(prompt, image_b64)
         except Exception as exc:
-            logger.error("[%s] API call failed: %s", name, exc)
+            logger.error("%s API call failed: %s", self._tag(name), exc)
 
         self._log_thinking(name, thinking)
         self._log_raw(name, raw)
@@ -220,18 +227,18 @@ class WallpaperScorer:
         if parsed is not None:
             deduction = float(parsed.get("deduction", 0))
             reason = parsed.get("reason", "")
-            logger.info("[%s] Deduction: %s | Reason: %s", name, deduction, reason)
+            logger.info("%s Deduction: %s | Reason: %s", self._tag(name), deduction, reason)
             return DimensionResult(name=name, reason=reason, deduction=deduction)
 
         # -- recovery path --
-        logger.warning("[%s] Primary response invalid or missing. Attempting recovery...", name)
+        logger.warning("%s Primary response invalid or missing. Attempting recovery...", self._tag(name))
         recovered = self._attempt_recovery(name, thinking, raw)
 
         if recovered is not None:
             return DimensionResult(name=name, **recovered, recovered=True)
 
         # -- total failure --
-        logger.error("[%s] Recovery also failed. Using safe default.", name)
+        logger.error("%s Recovery also failed. Using safe default.", self._tag(name))
         return DimensionResult(
             name=name,
             reason=f"[ERROR] Scoring failed. Thinking: {len(thinking)} chars, output: {len(raw)} chars.",
@@ -296,31 +303,31 @@ class WallpaperScorer:
         if raw:
             parts.append(f"=== YOUR PARTIAL OUTPUT ===\n{raw.strip()}")
         if not parts:
-            logger.warning("[%s] Recovery skipped: nothing to work from.", name)
+            logger.warning("%s Recovery skipped: nothing to work from.", self._tag(name))
             return None
 
         user_message = "\n\n".join(parts)
-        logger.info("[%s] >>> Recovery: %d chars of context ...", name, len(user_message))
+        logger.info("%s >>> Recovery: %d chars of context ...", self._tag(name), len(user_message))
 
         try:
             recovery_text = self._call_text(fallback_prompt, user_message)
         except Exception as exc:
-            logger.error("[%s] Recovery API call failed: %s", name, exc)
+            logger.error("%s Recovery API call failed: %s", self._tag(name), exc)
             return None
 
         if self.debug:
-            logger.info("[%s] Recovery output:\n%s", name, recovery_text)
+            logger.info("%s Recovery output:\n%s", self._tag(name), recovery_text)
         else:
-            logger.info("[%s] Recovery output: %d chars", name, len(recovery_text))
+            logger.info("%s Recovery output: %d chars", self._tag(name), len(recovery_text))
 
         parsed = self._extract_json(recovery_text)
         if parsed is None:
-            logger.error("[%s] Recovery produced invalid JSON:\n%s", name, recovery_text)
+            logger.error("%s Recovery produced invalid JSON:\n%s", self._tag(name), recovery_text)
             return None
 
         reason = parsed.get("reason", "")
         deduction = float(parsed.get("deduction", 0))
-        logger.info("[%s] Recovery succeeded -> deduction: %s", name, deduction)
+        logger.info("%s Recovery succeeded -> deduction: %s", self._tag(name), deduction)
         return {"reason": reason, "deduction": deduction}
 
     def _load_fallback_prompt(self) -> str | None:
@@ -395,20 +402,20 @@ class WallpaperScorer:
         if not thinking:
             return
         if self.debug:
-            logger.info("[%s] --- thinking (%d chars) ---", name, len(thinking))
+            logger.info("%s --- thinking (%d chars) ---", self._tag(name), len(thinking))
             logger.info(thinking.strip())
-            logger.info("[%s] --- end of thinking ---", name)
+            logger.info("%s --- end of thinking ---", self._tag(name))
         else:
-            logger.info("[%s] --- thinking captured (%d chars, use --debug to view) ---", name, len(thinking))
+            logger.info("%s --- thinking captured (%d chars, use --debug to view) ---", self._tag(name), len(thinking))
 
     def _log_raw(self, name: str, raw: str):
         if self.debug:
-            logger.info("[%s] Raw output:\n%s", name, raw)
+            logger.info("%s Raw output:\n%s", self._tag(name), raw)
         else:
             preview = raw[:200]
             if len(raw) > 200:
                 preview += f"... ({len(raw)} chars, use --debug to view)"
-            logger.info("[%s] Raw output: %s", name, preview)
+            logger.info("%s Raw output: %s", self._tag(name), preview)
 
 
 # ---------------------------------------------------------------------------

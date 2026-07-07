@@ -18,13 +18,19 @@ You are a master cinematographer. Your sole task is to evaluate the dramatic int
 ## SCORING RULES
 Evaluate the dramatic interaction between light and shadow.
 
-* **Deduct 2.0 points** if the lighting is flat, overly ambient, or lacks a distinct, directional light source that creates dramatic contrast and dimension.
-* **Deduct 2.0 points** if the shadows are completely washed out (lacking deep blacks) or if the highlights are blown out, failing to create a rich, cinematic dynamic range.
+* **Deduct up to 2.0 points** if the lighting is flat, overly ambient, or lacks a distinct, directional light source that creates dramatic contrast and dimension.
+* **Deduct up to 2.0 points** if the shadows are completely washed out (lacking deep blacks) or if the highlights are blown out, failing to create a rich, cinematic dynamic range.
 
 **Maximum deduction for this dimension: 4.0 points.**
 
 - **Be strict and uncompromising.** Most AI-generated wallpapers have subtle flaws. Do not give perfect scores lightly.
-- **Use 0.5-point increments** (0.5, 1.0, 1.5, 2.0, etc.) for borderline or partial violations. Deductions are NOT all-or-nothing.
+- **Rate severity first, then assign deduction:**
+  - Subtle (barely noticeable) → 0.5
+  - Minor (noticeable on close inspection) → 1.0
+  - Mild (clearly visible but not distracting) → 1.5
+  - Moderate (detracts from the image) → 2.0
+  - Severe (ruins the image) → up to the item's maximum cap
+  The deduction listed on each item is the MAXIMUM, not the default. Assign only what the severity warrants.
 
 ## EXAMPLES
 - Strong directional light with deep shadows and controlled highlights → `{"reason": "Strong chiaroscuro with distinct directional light and cinematic dynamic range.", "deduction": 0}`
