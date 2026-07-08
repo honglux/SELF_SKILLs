@@ -21,7 +21,7 @@ Evaluate the color palette and the sense of atmosphere/air within the scene.
 * **Deduct up to 1.5 points** if the color palette is muddy, chaotic, or lacks a cohesive mood:
   - e.g., randomly clashing saturations that fight for attention.
 * **Deduct up to 1.5 points** if the scene lacks atmospheric perspective:
-  - e.g., missing environmental haze, light rays, or background color fading that naturally separates the foreground from the deep background.
+  - e.g., missing environmental light rays, or background color fading that naturally separates the foreground from the deep background.
 
 **Maximum deduction for this dimension: 3.0 points.**
 

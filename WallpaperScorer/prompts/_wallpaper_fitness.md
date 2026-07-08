@@ -13,9 +13,8 @@ Look at the image one more time and answer a single question: **Is this image tr
 - **Output ONLY valid JSON.** No markdown fences, no extra text.
 
 ## THINKING BUDGET
-- **Maximum 10 paragraphs total.** No more.
-- Do NOT re-evaluate or loop.
-- As soon as you have a verdict, output JSON immediately.
+- **No paragraph limit.** Think as deeply as needed to reach a confident verdict.
+- Re-evaluate if useful — accuracy is the priority.
 
 ## CONSIDERATIONS
 - Would system desktop icons be legible against this image?

@@ -85,8 +85,8 @@ class WallpaperScorer:
     DEFAULT_API_KEY = "lm-studio"
     DEFAULT_MODEL = "local-model"
 
-    # Token budgets (overridden by constructor if --full mode)
-    DEFAULT_MAX_TOKENS = 4096
+    # Token budgets (-1 = unlimited, deep-thinking default)
+    DEFAULT_MAX_TOKENS = -1
 
     def __init__(
         self,
@@ -422,21 +422,16 @@ class WallpaperScorer:
 # CLI entry point
 # ---------------------------------------------------------------------------
 
-# Aesthetic prompts directory (separate score category)
 DEFAULT_AESTHETIC_PROMPTS_DIR = "prompts_aesthetic"
-# Full-power mode directories
-FULL_PROMPTS_DIR = "prompts_full"
-FULL_AESTHETIC_PROMPTS_DIR = "prompts_aesthetic_full"
 
 
-def _run_suite(image_path: str, prompts_dir: str, label: str, debug: bool,
-               max_tokens: int | None = None) -> ScoreReport | None:
+def _run_suite(image_path: str, prompts_dir: str, label: str, debug: bool) -> ScoreReport | None:
     """Run a scoring suite. Returns None if directory is missing or empty."""
     if not os.path.isdir(prompts_dir):
         logger.warning("%s suite skipped: directory not found (%s)", label, prompts_dir)
         return None
     try:
-        scorer = WallpaperScorer(prompts_dir=prompts_dir, debug=debug, max_tokens=max_tokens)
+        scorer = WallpaperScorer(prompts_dir=prompts_dir, debug=debug)
         return scorer.score(image_path)
     except FileNotFoundError:
         logger.warning("%s suite skipped: no prompt files in %s", label, prompts_dir)
@@ -457,10 +452,6 @@ def main():
         help="Directory for aesthetic scoring prompts (default: prompts_aesthetic/)",
     )
     parser.add_argument(
-        "-f", "--full", action="store_true",
-        help="Full-power mode: remove token limits, use deep-thinking prompts",
-    )
-    parser.add_argument(
         "--debug", action="store_true", default=True,
         help="Show full thinking / raw output in log (default: on)",
     )
@@ -470,20 +461,9 @@ def main():
     )
     args = parser.parse_args()
 
-    # Resolve directories and token limit based on mode
-    if args.full:
-        tech_dir = FULL_PROMPTS_DIR
-        aesth_dir = FULL_AESTHETIC_PROMPTS_DIR
-        max_tokens = -1
-        logger.info("*** FULL POWER MODE enabled (max_tokens=-1, deep-thinking prompts) ***")
-    else:
-        tech_dir = args.prompts_dir
-        aesth_dir = args.prompts_aesthetic_dir
-        max_tokens = None  # use default 4096
-
     try:
-        tech_report = _run_suite(args.image, tech_dir, "Technical", args.debug, max_tokens=max_tokens)
-        aesth_report = _run_suite(args.image, aesth_dir, "Aesthetic", args.debug, max_tokens=max_tokens)
+        tech_report = _run_suite(args.image, args.prompts_dir, "Technical", args.debug)
+        aesth_report = _run_suite(args.image, args.prompts_aesthetic_dir, "Aesthetic", args.debug)
 
         if tech_report is None and aesth_report is None:
             print("Error: no scoring suites available.")
@@ -495,9 +475,7 @@ def main():
             and tech_report.final_score == 10 and aesth_report.final_score == 10
         ):
             logger.info("Both scores are 10/10 — running wallpaper fitness tiebreaker...")
-            fitness_dir = tech_dir  # use same prompt dir (normal or full)
-            fitness_scorer = WallpaperScorer(prompts_dir=fitness_dir, debug=args.debug,
-                                             max_tokens=max_tokens)
+            fitness_scorer = WallpaperScorer(prompts_dir=args.prompts_dir, debug=args.debug)
             fitness_score = fitness_scorer.wallpaper_fitness_score(args.image)
             if fitness_score is not None:
                 aesth_report.final_score = fitness_score
