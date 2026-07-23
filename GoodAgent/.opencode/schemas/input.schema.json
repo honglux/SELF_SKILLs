@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SessionInput",
+  "description": "外部调用方传入的 JSON 参数，GoodAgent 扫描的触发点",
+  "type": "object",
+  "required": ["code_snippet", "code_path", "session_id"],
+  "properties": {
+    "code_snippet": {
+      "type": "string",
+      "description": "待分析的源代码内容，可为多行文本。JSON 序列化前需转义双引号和反斜杠。"
+    },
+    "code_path": {
+      "type": "string",
+      "description": "代码文件在磁盘上的绝对路径。Subagent 优先通过此路径读取完整文件。"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9._-]+$",
+      "description": "唯一会话标识，用于隔离输出目录。仅允许字母、数字、点、下划线、连字符。"
+    },
+    "rules": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "可选，指定要执行的规则 ID 列表。null 或省略表示执行所有规则。（v1 仅 hardcoded-secret）"
+    }
+  },
+  "additionalProperties": false
+}

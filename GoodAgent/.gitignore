@@ -1,0 +1,33 @@
+﻿# 依赖
+node_modules/
+
+# 运行时产物
+output/
+*.log
+
+# Speckit 开发工具（非产出文件）
+.opencode/commands/
+specs/
+.specify/
+
+# IDE / 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# 临时文件
+*.tmp
+*.bak

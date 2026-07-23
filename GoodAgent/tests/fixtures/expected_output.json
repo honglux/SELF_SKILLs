@@ -1,0 +1,10 @@
+{
+  "session_id": "test-session",
+  "generated_at": "2026-07-23T00:00:00Z",
+  "alerts": [
+    { "rule_id": "hardcoded-secret", "severity": "high", "file": "sample_with_secrets.py", "line": 2, "description": "明文密码硬编码", "evidence": "DB_PASSWORD = \"Admin@123\"" },
+    { "rule_id": "hardcoded-secret", "severity": "medium", "file": "sample_with_secrets.py", "line": 3, "description": "Base64 编码密钥", "evidence": "API_KEY = \"dGhpc0lzQVNlY3JldEtleVRlc3Q=\"" },
+    { "rule_id": "hardcoded-secret", "severity": "info", "file": "sample_with_secrets.py", "line": 4, "description": "32位十六进制字符串（疑似密钥）", "evidence": "SECRET_TOKEN = \"a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6\"" },
+    { "rule_id": "hardcoded-secret", "severity": "high", "file": "sample_with_secrets.py", "line": 5, "description": "URL 嵌入明文密码", "evidence": "CONNECTION_STRING = \"http://admin:password123@localhost:8080/api\"" }
+  ]
+}

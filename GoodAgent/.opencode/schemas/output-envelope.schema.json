@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SessionOutputEnvelope",
+  "description": "CLI stdout 返回的 JSON 状态信封，不含完整告警数据",
+  "type": "object",
+  "required": ["session_id", "status", "output_file", "alert_count", "summary"],
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "与输入一致的会话标识"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "partial", "error"],
+      "description": "completed: 全部完成 | partial: 部分完成（某些规则有错误） | error: 无法执行"
+    },
+    "output_file": {
+      "type": "string",
+      "description": "最终结果文件的绝对路径（output/{session_id}/alerts.json）"
+    },
+    "alert_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "告警条目总数"
+    },
+    "error": {
+      "type": "string",
+      "description": "仅在 status=error 时提供错误描述"
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total_scanned", "high_risk", "medium_risk", "low_risk", "false_positive_likely"],
+      "properties": {
+        "total_scanned": { "type": "integer", "minimum": 0 },
+        "high_risk": { "type": "integer", "minimum": 0 },
+        "medium_risk": { "type": "integer", "minimum": 0 },
+        "low_risk": { "type": "integer", "minimum": 0 },
+        "false_positive_likely": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,6 @@
+{
+  "session_id": "broken-test",
+  "alerts": [
+    { "rule_id": "hardcoded-secret", "severity": "high", "file": "test.py", "line": 1, "description": "问题描述", "evidence": "pwd = "Admin@123"" }
+  ]
+}
