@@ -48,7 +48,7 @@ permission:
 
 若 `code_snippet` 为空但 `code_path` 可读：使用 Read 读取完整文件内容作为 code_snippet。
 
-## 第 2 步：创建 session 隔离目录
+## 第 2 步：创建 session 隔离目录并生成自身 checklist
 
 使用 Bash 创建以下目录结构：
 ```
@@ -56,29 +56,30 @@ output/{session_id}/
 output/{session_id}/tmp/
 ```
 
-## 第 3 步：生成执行 checklist 并落盘
-
-在派发 subagent 前，使用 Write 工具创建文件 `output/{session_id}/tmp/checklist_hardcoded-secret.md`，
-内容为以下 10 步执行计划（全部初始为未完成 `[ ]`）：
+**目录创建完成后，立即生成 sentinel 自身的执行 checklist** 并落盘到
+`output/{session_id}/tmp/checklist_sentinel.md`。内容为以下 9 步计划（全部初始为 `[ ]`）：
 
 ```markdown
-# 执行计划 Checklist: hardcoded-secret
+# 执行计划 Checklist: sentinel
 
 | # | 步骤 | 状态 |
 |---|------|------|
-| 1 | 读取待分析文件 | [ ] |
-| 2 | 密码/认证关键词检测 | [ ] |
-| 3 | 硬编码密码特征检测 | [ ] |
-| 4 | Base64 编码密钥检测 | [ ] |
-| 5 | 协议 URL 嵌入密码检测 | [ ] |
-| 6 | 配置文件特殊审计 | [ ] |
-| 7 | 数据来源追溯 | [ ] |
-| 8 | 误报排除 | [ ] |
-| 9 | 生成结构化告警输出 | [ ] |
-| 10 | 写入结果文件 | [ ] |
+| 1 | 解析并验证输入参数 | [ ] |
+| 2 | 创建 session 隔离目录 | [ ] |
+| 3 | 派发 hardcoded-secret-scanner subagent | [ ] |
+| 4 | 保存 subagent 原始输出到 JSON | [ ] |
+| 5 | JSON 转义处理 | [ ] |
+| 6 | 聚合最终结果 alerts.json | [ ] |
+| 7 | 派发 json-validator 校验 alerts.json | [ ] |
+| 8 | 统计 severity 分布 | [ ] |
+| 9 | 调用 emit_result.py 输出 stdout JSON | [ ] |
 ```
 
-## 第 4 步：派发 subagent 执行扫描
+**执行每一步后**，使用 Edit 工具将 checklist 中对应步骤的 `[ ]` 更新为 `[x]`。
+
+## 第 3 步：派发 subagent 执行扫描
+
+之前为 subagent 生成 checklist 的步骤已移除 — subagent 会自行生成并更新自己的 checklist。
 
 使用 Task 工具派发 `hardcoded-secret-scanner` subagent。
 在 task 描述中传入以下内容：
@@ -188,7 +189,24 @@ python scripts/emit_result.py {session_id} output
 | code_snippet 为空且 code_path 也无效 | 立即输出 error envelope 并停止 |
 | subagent 返回空或无表格内容 | alerts 数组为空，继续执行 |
 | 目录创建失败 | 输出 error envelope 并停止 |
-| emit_result.ps1 执行失败 | 手动构造 error envelope 输出 |
+| emit_result.py 执行失败 | 手动构造 error envelope 输出 |
+
+# 日志落盘规则（关键）
+
+在以下关键节点，使用 Bash `echo` 追加日志到 `output/{session_id}/tmp/session.log`：
+
+1. **启动** — 日志：`[YYYY-MM-DDTHH:mm:ss] SESSION_START session_id={session_id} code_path={code_path}`
+2. **参数验证通过** — 日志：`[时间] VALIDATION_PASS code_path 可读`
+3. **目录创建** — 日志：`[时间] DIR_CREATED output/{session_id}/`
+4. **Subagent 派发** — 日志：`[时间] SUBAGENT_DISPATCH agent=hardcoded-secret-scanner`
+5. **Subagent 返回** — 日志：`[时间] SUBAGENT_RETURN findings={N}`
+6. **Checklist 更新** — 日志：`[时间] CHECKLIST_UPDATED all_steps_done`
+7. **alerts.json 写入** — 日志：`[时间] ALERTS_WRITTEN path=output/{session_id}/alerts.json count={N}`
+8. **json-validator 结果** — 日志：`[时间] JSON_VALIDATION result={valid/invalid}`
+9. **emit_result 调用** — 日志：`[时间] EMIT_RESULT status={completed/partial/error}`
+10. **完成** — 日志：`[时间] SESSION_END status={completed/partial/error}`
+
+每次写日志使用：`bash echo "[时间] EVENT key=value" >> output/{session_id}/tmp/session.log`
 
 # 注意事项
 
