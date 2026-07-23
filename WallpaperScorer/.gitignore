@@ -1,0 +1,24 @@
+# Logs
+logs/
+
+# Batch output
+batch_output/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.mypy_cache/
+
+# Claude
+.claude/
+
+# Test images
+Test/
+
+# Local scripts
+run.bat
+
+# OS
+.DS_Store
+Thumbs.db
