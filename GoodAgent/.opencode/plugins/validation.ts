@@ -1,7 +1,16 @@
 import type { Plugin } from "@opencode-ai/plugin"
 
 export const ValidationPlugin: Plugin = async (ctx) => {
-  const { client } = ctx
+  const { client, $ } = ctx
+
+  async function validateJSONFile(filePath: string): Promise<boolean> {
+    try {
+      const result = await $`python scripts/validate_json.py ${filePath}`.quiet()
+      return result.exitCode === 0
+    } catch {
+      return false
+    }
+  }
 
   return {
     "tool.execute.after": async (input: any, output: any) => {
@@ -10,16 +19,17 @@ export const ValidationPlugin: Plugin = async (ctx) => {
       const resultText = output.result
       if (!resultText || typeof resultText !== "string") return
 
+      const taskDescription = input.args?.description || ""
+
       await client.app.log({
         body: {
           service: "goodagent-validation",
           level: "info",
-          message: `Afterhook inspecting task completion for tool: ${input.tool}`,
+          message: `Afterhook inspecting task: ${taskDescription.substring(0, 80)}`,
         },
       })
 
       // 1. Checklist completion check
-      // Parse output for checklist markers [x] vs [ ]
       const uncheckedItems = (resultText.match(/\[ \]/g) || []).length
       if (uncheckedItems > 0) {
         await client.app.log({
@@ -47,19 +57,7 @@ export const ValidationPlugin: Plugin = async (ctx) => {
         })
       }
 
-      // 3. Result completeness check
-      // Detect empty results when input was non-empty
-      if (hasNoFindings && resultText.length < 20) {
-        await client.app.log({
-          body: {
-            service: "goodagent-validation",
-            level: "info",
-            message: "Subagent reports no findings (short output, likely legitimate)",
-          },
-        })
-      }
-
-      // Detect suspicious uniform severity
+      // 3. Result completeness check — detect suspicious uniform severity
       const severityCounts = {
         high: (resultText.match(/❌高风险/g) || []).length,
         medium: (resultText.match(/⚠️中风险/g) || []).length,
@@ -78,6 +76,48 @@ export const ValidationPlugin: Plugin = async (ctx) => {
             extra: severityCounts,
           },
         })
+      }
+
+      // 4. JSON file validation via Python script (FR-015 bypass)
+      const jsonFileMatch = resultText.match(/output\/[a-zA-Z0-9._-]+\/(?:tmp\/[a-z-]+\.json|alerts\.json)/g)
+      if (jsonFileMatch) {
+        for (const filePath of jsonFileMatch) {
+          const valid = await validateJSONFile(filePath)
+          await client.app.log({
+            body: {
+              service: "goodagent-validation",
+              level: valid ? "info" : "error",
+              message: valid
+                ? `JSON file validated: ${filePath}`
+                : `JSON file INVALID: ${filePath} — dispatching json-validator for repair`,
+              extra: { file: filePath, valid },
+            },
+          })
+
+          // FR-014: If invalid, dispatch json-validator subagent for auto-repair
+          if (!valid) {
+            try {
+              await client.session.prompt({
+                path: { id: input.sessionID },
+                body: {
+                  noReply: true,
+                  parts: [{
+                    type: "text",
+                    text: `@json-validator 请校验并修复以下 JSON 文件：${filePath}`,
+                  }],
+                },
+              })
+            } catch (err) {
+              await client.app.log({
+                body: {
+                  service: "goodagent-validation",
+                  level: "error",
+                  message: `Failed to dispatch json-validator: ${err}`,
+                },
+              })
+            }
+          }
+        }
       }
     },
   }

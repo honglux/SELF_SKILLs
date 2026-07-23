@@ -147,6 +147,15 @@ markdown 的文本，你需要解析它并转换为以下 JSON 格式：
 
 所有 `alerts` 数组元素为从第 5 步解析出的 Alert 对象。
 
+## 第 7.5 步：校验 alerts.json 格式
+
+使用 Task 工具派发 `json-validator` subagent，传入 `output/{session_id}/alerts.json`
+作为校验目标。等待 validator 返回结果：
+
+- 若返回 `{ "valid": true, ... }` → 格式正确，继续下一步
+- 若返回 `{ "valid": false, ... }` → JSON 格式无法修复，最终 status 标记为 `"partial"`，
+  在 errors.log 记录 validator 返回的错误信息
+
 ## 第 8 步：统计 severity 分布
 
 对 `alerts` 数组中的条目按 `severity` 字段统计：
