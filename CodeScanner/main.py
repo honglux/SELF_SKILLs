@@ -41,7 +41,7 @@ IGNORE_DIRS = {
 
 # ── 日志系统 ──────────────────────────────────────────────────────────
 
-def setup_logging(debug: bool = False):
+def setup_logging(debug: bool = False, log_dir: Path = Path(".")):
     logger.setLevel(logging.DEBUG)
 
     # 控制台：INFO 级别
@@ -51,7 +51,8 @@ def setup_logging(debug: bool = False):
     logger.addHandler(ch)
 
     # 文件：DEBUG 级别仅在 --debug 模式下启用，否则 INFO
-    fh = logging.FileHandler("scanner.log", encoding="utf-8")
+    log_dir.mkdir(parents=True, exist_ok=True)
+    fh = logging.FileHandler(log_dir / "scanner.log", encoding="utf-8")
     fh.setLevel(logging.DEBUG if debug else logging.INFO)
     fh.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)-5s %(message)s"))
     logger.addHandler(fh)
@@ -134,7 +135,12 @@ def append_combined_result(result: str, workdir: Path, code_root: Path, combined
 
 def main():
     args = parse_args()
-    setup_logging(debug=args.debug)
+
+    run_dir = f"output/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    output_base = Path(run_dir)
+    output_base.mkdir(parents=True, exist_ok=True)
+
+    setup_logging(debug=args.debug, log_dir=output_base)
 
     code_root = Path(args.code_root).resolve()
     logger.info("CodeScanner 启动")
@@ -149,10 +155,7 @@ def main():
 
     client = get_client(args.ai_tool)
 
-    run_dir = f"output/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    output_base = Path(run_dir)
     combined_file = output_base / "combined_results.md"
-    combined_file.parent.mkdir(parents=True, exist_ok=True)
 
     total = len(dirs)
     failed = 0
