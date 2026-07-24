@@ -149,7 +149,8 @@ def main():
 
     client = get_client(args.ai_tool)
 
-    output_base = Path("output")
+    run_dir = f"output/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    output_base = Path(run_dir)
     combined_file = output_base / "combined_results.md"
     combined_file.parent.mkdir(parents=True, exist_ok=True)
 
